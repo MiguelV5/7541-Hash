@@ -2,13 +2,18 @@
 #include <stdlib.h>
 #include "hash.h"
 
+typedef struct casilla{
+    const char* clave;
+    void* dato;         // dato == El valor correspondiente a la clave.
+    bool esta_disponible;
+}casilla_t;
+
 struct hash{
+    casilla_t* tabla;
+    size_t capacidad;
+    size_t cantidad_almacenados;
+    hash_destruir_dato_t destructor_dato;
 };
-
-
-hash_t* hash_crear(hash_destruir_dato_t destruir_elemento, size_t capacidad_inicial){
-  return NULL;
-}
 
 
 /**
@@ -19,45 +24,99 @@ hash_t* hash_crear(hash_destruir_dato_t destruir_elemento, size_t capacidad_inic
  * elección de la función de hash".
 */
 size_t funcion_de_hash(char* string_clave){
-  
-  size_t resultado_hash = 5;
-  
-  while(*string_clave){
-    resultado_hash = resultado_hash*3 + *string_clave;
-    string_clave++;
-  }
+    
+    size_t resultado_hash = 5;
+    
+    while(*string_clave){
+        resultado_hash = resultado_hash*3 + *string_clave;
+        string_clave++;
+    }
 
-  return resultado_hash;
-  
+    return resultado_hash;
+    
 }
 
+
+hash_t* hash_crear(hash_destruir_dato_t destruir_elemento, size_t capacidad_inicial){
+
+    
+
+    return NULL;
+
+}
 
 
 
 int hash_insertar(hash_t* hash, const char* clave, void* elemento){
-  return 0;
+
+
+
+    return 0;
+
 }
+
+
+
 
 int hash_quitar(hash_t* hash, const char* clave){
-  return 0;
+
+
+
+    return 0;
+
 }
+
+
+
 
 void* hash_obtener(hash_t* hash, const char* clave){
+
+
+
   return NULL;
+
 }
+
+
 
 size_t hash_cantidad(hash_t* hash){
-  return 0;
+
+
+
+    return 0;
+
 }
+
+
 
 bool hash_contiene(hash_t* hash, const char* clave){
-  return false;
+
+
+
+    return false;
+
 }
+
+
 
 void hash_destruir(hash_t* hash){
+
+    if(!hash){
+        return;
+    }
+
+    free(hash->tabla);
+    free(hash);
+
 }
 
+
+
 size_t hash_con_cada_clave(hash_t* hash, bool (*funcion)(hash_t* hash, const char* clave, void* aux), void* aux){
-  return 0;
+
+
+
+    return 0;
+
 }
 

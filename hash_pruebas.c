@@ -5,7 +5,7 @@
 
 //
 
-void (){
+void DadoDestructorNullODestructorNoNull_SiSePideCrear_SeObtieneHashNoNull(){
 
 
 
@@ -17,19 +17,19 @@ void (){
 
 
 //
+
+void DadaCapacidadInicialCualquiera_SiSePideCrear_SeObtieneHashNoNull(){
+
+
+
+  printf("\n");
+
+}
+
+
+//
+
 /*
-void (){
-
-
-
-  printf("\n");
-
-}
-
-
-//
-
-
 void (){
 
 
@@ -68,11 +68,9 @@ void (){
 
 int main(){
 
-  pa2m_nuevo_grupo("Pruebas de ");
-    Dado_Si_X();
-    Dado_Si_X();
-    Dado_Si_X();
-    Dado_Si_X();
+  pa2m_nuevo_grupo("Pruebas de creación");
+    DadoDestructorNullODestructorNoNull_SiSePideCrear_SeObtieneHashNoNull();
+    DadaCapacidadInicialCualquiera_SiSePideCrear_SeObtieneHashNoNull();
 
   pa2m_nuevo_grupo("Pruebas de ");
     Dado_Si_X();
