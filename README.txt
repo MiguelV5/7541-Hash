@@ -14,7 +14,6 @@
     claves sean una forma única de representar un valor que 
     se encuentre alojado en la tabla.
 
-
     Para determinar la posición que le corresponde a cada
     clave en la tabla se utiliza una función de hash, que
     recibe la clave y devuelve algún valor que se pueda
@@ -132,6 +131,7 @@
             actualmente.
             4) El destructor de datos pasado por el usuario
             (en caso de tener uno).
+        
 
 
     ▒▒▒▒  Factor de carga elegido y criterios tomados  ▒▒▒▒
@@ -156,14 +156,16 @@
         la inserto en la siguiente posición adyacente que se 
         encuentre vacía en la tabla.
 
-        Para el borrado usaré el campo 'esta_disponible' de cada
+        Para el borrado usaré el campo 'dato_fue_eliminado' de cada
         casilla de la tabla como flag para determinar si
         hubo antes un dato almacenado en dicha posición o no.
+        (Útil para poder destruir toda la tabla
+        y así saber cuándo llamar al destructor y cuando no).
         De esta forma evito tener que reinsertar casillas
         cuando se borran elementos que tenían colisiones 
         subyacentes previas. A pesar de eso cabe aclarar que
         soy consciente de que se puede llegar a deteriorar un
-        poco la obtencion de casillas cuando se hayan borrado
+        poco la obtención de casillas cuando se hayan borrado
         muchos elementos, pues va a tardar más en encontrar
         posiciones vacías, pero a mi parecer es razonable para
         poder evitar lo anteriormente mencionado.
