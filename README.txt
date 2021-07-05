@@ -124,13 +124,19 @@
 
     ▒▒▒▒  Estructura utilizada  ▒▒▒▒
 
-        Se tiene en la estructura (hash_t):
+        Se tiene en la estructura hash_t:
             1) La tabla, que es un vector dinámico de casillas.
             2) La capacidad actual de la tabla.
             3) La cantidad de casillas con elementos almancedos
             actualmente.
             4) El destructor de datos pasado por el usuario
             (en caso de tener uno).
+        
+        Se tiene en la estructura casilla_t:
+            1) La clave de la casilla.
+            2) El dato guardado correspondiente a su clave.
+            3) Un flag que indica si la casilla tiene actualmente un dato guardado o no.
+            4) Un flag que indica si la casilla tuvo alguna vez algún dato guardado pero se borró.
         
 
 
