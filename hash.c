@@ -23,13 +23,13 @@ struct hash{
 };
 
 
-
+//valgrind --leak-check=full --track-origins=yes --show-reachable=yes --error-exitcode=2 ./hash_minidemo
 
 /**
  * Devuelve un string (reservado en memoria) duplicado del str.
  * Devuelve NULL si falla en reservarlo.
 */
-char* duplicar_string(const char* str){
+char* string_duplicar(const char* str){
 
     char* duplicado = malloc((1+strlen(str))*sizeof(char));
     if(!duplicado){
@@ -60,6 +60,7 @@ size_t funcion_de_hash(char* string_clave){
 
     return resultado_hash;
     
+
 }
 
 
@@ -160,7 +161,7 @@ int rehashear_tabla(hash_t* hash){
     int resultado_reinsercion = reinsercion_tabla(copia_hash, hash);
 
     if(resultado_reinsercion == FALLO){
-        free(hash->tabla); //Se libera la tabla que se iba a ser el reemplazo pero falló.
+        free(hash->tabla);       //Se libera la tabla que iba a ser el reemplazo pero falló.
         hash->tabla = copia_hash.tabla; //Sale con la misma tabla de antes asi no se pierde la referencia.
         return FALLO;
     }
@@ -175,44 +176,75 @@ int rehashear_tabla(hash_t* hash){
  * posición estaba ocupada en la tabla.
  * Modifica dicha posición dependiendo del caso que se encuentre al recorrer las casillas:
  * 
- *  - Si se encuentra con la misma clave en la tabla, devuelve la posición en la cual se encuentra la clave
- *    repetida. (Esto a propósito de reemplazar el dato correspondiente a la misma. Esto NO es una colisión).
+ *  - Si se encuentra con la misma clave en la tabla, devuelve true y asigna en 'posicion' la posición en la cual
+ *    se encuentra la clave repetida.
+ *    (Esto a propósito de reemplazar el dato correspondiente a la misma. Esto NO es una colisión).
  * 
- *  - Si se encuentra con una casilla vacía, devuelve la posición de la misma.
- *    (Esto pasa cuando no había una clave repetida, sino cuando hubo una colisión).
+ *  - Si se encuentra con una casilla vacía, devuelve false y asigna en 'posicion' la posición de la misma.
+ *    (Esto pasa cuando NO era una clave repetida, sino cuando hubo una colisión).
  * 
  * (Si la tabla termina, vuelve al inicio de la misma. Por ende se usa el módulo (%) para recorrer).
 */
-void buscar_verdadera_posicion_de_insercion(size_t* posicion, casilla_t* tabla, size_t tamanio_tabla, char* clave){
+bool buscar_verdadera_posicion_de_insercion(int* posicion, casilla_t* tabla, size_t tamanio_tabla, char* clave){
 
-    size_t i = (*posicion);
+    int posicion_inicial = (*posicion); //Copia de la posición inicial.
+    int i = (*posicion);
     bool clave_estaba_repetida = false;
+    bool se_dio_toda_la_vuelta = false;
 
-    while((tabla[i%tamanio_tabla].esta_ocupada == true) && (clave_estaba_repetida == false)){
+    while( ((tabla[i%tamanio_tabla].esta_ocupada == true) || (tabla[i%tamanio_tabla].dato_fue_eliminado == true)) && (clave_estaba_repetida == false) && (se_dio_toda_la_vuelta == false)){
+        
+        if((tabla[i%tamanio_tabla].esta_ocupada == true) && (tabla[i%tamanio_tabla].dato_fue_eliminado == false)){
+            
+            if(strcmp(tabla[i%tamanio_tabla].clave , clave) == 0){
 
-        if(strcmp(tabla[i%tamanio_tabla].clave , clave) == 0){
-            clave_estaba_repetida = true;
-            (*posicion) = i%tamanio_tabla;
+                clave_estaba_repetida = true;
+                (*posicion) = i%tamanio_tabla;
+
+            }
+
         }
+
+        if( ((i%tamanio_tabla) == (posicion_inicial-1)) || ((posicion_inicial == 0) && (i == tamanio_tabla-1)) ){
+            se_dio_toda_la_vuelta = true;
+        }
+        
         i++;
 
     }
-    if(clave_estaba_repetida == false){
+
+    if((clave_estaba_repetida == false) && (tabla[i%tamanio_tabla].esta_ocupada == false)){
         (*posicion) = i%tamanio_tabla;
     }
+    else if((clave_estaba_repetida == false) && (tabla[i%tamanio_tabla].esta_ocupada == true)){
+
+        while(tabla[i%tamanio_tabla].esta_ocupada == true){
+            i++;
+        }
+        (*posicion) = i%tamanio_tabla;
+
+    }
+
+    return clave_estaba_repetida;
 
 }
 
 /**
  * Llena la casilla de la tabla en la posición dada con la clave y el elemento dado.
 */
-void encasillar_en_posicion(size_t posicion, hash_t* hash, char* clave, void* elemento){
-
+void encasillar_en_posicion(int posicion, hash_t* hash, char* clave, void* elemento, bool era_clave_repetida){
+    
+    if(era_clave_repetida){
+        free(hash->tabla[posicion].clave); //Debido a que antes se tenía reservado un duplicado adicional (de cuando se insertó por 1ra vez).
+    }
+    
     hash->tabla[posicion].clave = clave;
     hash->tabla[posicion].dato = elemento;
     hash->tabla[posicion].esta_ocupada = true;
     hash->tabla[posicion].dato_fue_eliminado = false;
-    hash->cantidad_almacenados++;
+    if(!era_clave_repetida){
+        hash->cantidad_almacenados++;
+    }
 
 }
 
@@ -224,34 +256,34 @@ int hash_insertar(hash_t* hash, const char* clave, void* elemento){
     }
 
     if(factor_de_carga_excedido(hash->cantidad_almacenados, hash->capacidad)){
+
         int resultado_rehasheo = rehashear_tabla(hash);
         if(resultado_rehasheo == FALLO){
             return FALLO;
         }
-        else{
-            int resultado_insercion = hash_insertar(hash, clave, elemento);
-            return resultado_insercion;
-        }
+
     }
 
-    char* clave_duplicada = duplicar_string(clave);
+    char* clave_duplicada = string_duplicar(clave);
     if(!clave_duplicada){
         return FALLO;
     }
 
     size_t valor_de_hasheo = funcion_de_hash(clave_duplicada);
-    size_t posicion_a_insertar = valor_de_hasheo%(hash->capacidad);
+    int posicion_a_insertar = valor_de_hasheo%(hash->capacidad);
 
-    if(hash->tabla[posicion_a_insertar].esta_ocupada){ //HUBO COLISIÓN O HABÍA CLAVE REPETIDA.
+    bool posible_colision_o_clave_repetida = (hash->tabla[posicion_a_insertar].esta_ocupada || hash->tabla[posicion_a_insertar].dato_fue_eliminado);
 
-        buscar_verdadera_posicion_de_insercion(&posicion_a_insertar, hash->tabla, hash->capacidad, clave_duplicada);
+    if(posible_colision_o_clave_repetida){
 
-        encasillar_en_posicion(posicion_a_insertar, hash, clave_duplicada, elemento);
+        bool era_clave_repetida = buscar_verdadera_posicion_de_insercion(&posicion_a_insertar, hash->tabla, hash->capacidad, clave_duplicada);
+
+        encasillar_en_posicion(posicion_a_insertar, hash, clave_duplicada, elemento, era_clave_repetida);
         
     }
     else{
 
-        encasillar_en_posicion(posicion_a_insertar, hash, clave_duplicada, elemento);
+        encasillar_en_posicion(posicion_a_insertar, hash, clave_duplicada, elemento, false);
 
     }
 
@@ -281,7 +313,7 @@ int posicion_buscar_a_partir_de(int posicion_inicial, casilla_t* tabla, size_t t
     bool se_dio_toda_la_vuelta = false; //Si se llegó a la posición inicial y no se encontró nada.
     int posicion_correspondiente = FALLO;
 
-    while( ((tabla[i%tamanio_tabla].esta_ocupada == true) || (tabla[i%tamanio_tabla].dato_fue_eliminado == false)) && (clave_encontrada == false) && (se_dio_toda_la_vuelta == false)){
+    while( ((tabla[i%tamanio_tabla].esta_ocupada == true) || (tabla[i%tamanio_tabla].dato_fue_eliminado == true)) && (clave_encontrada == false) && (se_dio_toda_la_vuelta == false)){
 
         if((tabla[i%tamanio_tabla].esta_ocupada == true) && (tabla[i%tamanio_tabla].dato_fue_eliminado == false)){
 
@@ -292,7 +324,7 @@ int posicion_buscar_a_partir_de(int posicion_inicial, casilla_t* tabla, size_t t
 
         }
 
-        if( (i%tamanio_tabla) == (posicion_inicial-1) ){
+        if( ((i%tamanio_tabla) == (posicion_inicial-1)) || ((posicion_inicial == 0) && (i == tamanio_tabla-1)) ){
             se_dio_toda_la_vuelta = true;
         }
 
@@ -411,7 +443,7 @@ void destruir_casilleros(casilla_t* tabla, size_t tamanio,  hash_destruir_dato_t
 
     for(size_t i = 0; i < tamanio; i++){
 
-        if((tabla[i].esta_ocupada == true) && (tabla[i].dato_fue_eliminado == false)){
+        if(tabla[i].esta_ocupada == true){
             
             if(destructor){
                 destructor(tabla[i].dato);
@@ -441,9 +473,24 @@ void hash_destruir(hash_t* hash){
 
 size_t hash_con_cada_clave(hash_t* hash, bool (*funcion)(hash_t* hash, const char* clave, void* aux), void* aux){
 
+    if(!hash || !funcion){
+        return 0;
+    }
 
+    size_t i = 0;
+    size_t conteo_aplicadas = 0;
+    bool resultado_de_funcion = false;
+    while((i < hash->capacidad) && (resultado_de_funcion == false)){
 
-    return 0;
+        if((hash->tabla[i].esta_ocupada == true) && (hash->tabla[i].dato_fue_eliminado == false)){
+            resultado_de_funcion = funcion(hash, hash->tabla[i].clave, aux);
+            conteo_aplicadas++;
+        }
+        i++;
+
+    }
+
+    return conteo_aplicadas;
 
 }
 

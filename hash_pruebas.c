@@ -136,6 +136,10 @@ void DadaTablaVaciaDeGranCapacidad_SiSeInsertanVariosDatos_SeInsertanCorrectamen
   pa2m_afirmar( hash_contiene(hash, clave_cuatro) == true , "El dato insertado está contenido en la tabla.");
   pa2m_afirmar( hash_cantidad(hash) == 4 , "La cantidad de datos almacenados es 4.");
 
+  pa2m_afirmar( hash_insertar(hash, clave_cuatro, &uno) == EXITO , "Se insertó una clave repetida en la tabla (solo debería reemplazarse el dato).");
+  pa2m_afirmar( hash_contiene(hash, clave_cuatro) == true , "El dato correspondiente a la misma clave sigue contenido en la tabla.");
+  pa2m_afirmar( hash_cantidad(hash) == 4 , "La cantidad de datos almacenados sigue siendo 4.");
+
   hash_destruir(hash);
   printf("\n");
 
@@ -490,6 +494,111 @@ void DadaTablaConDatos_SiSeQuitanTodosLosDatos_ResultaTablaVaciaYSePuedenVolverA
 }
 
 
+// PRUEBAS DE ITERADOR
+
+
+// ============================================== / / ============================================== //
+
+/**
+ * Función auxiliar de prueba. PARA USAR EN PRUEBA DE ITERADOR SIN CORTE
+ * Le suma 'aumento' al contenido del dato correspondiente a la clave.
+ * Siempre devuelve false
+*/
+bool sin_corte_aumento_y_muestreo(hash_t* hash, const char* clave, void* aumento){
+
+  int* entero_correspondiente = hash_obtener(hash, clave);
+  (*entero_correspondiente) += (*(int*)aumento);
+
+  return false;
+
+}
+
+/**
+ * Función auxiliar de prueba. PARA USAR EN PRUEBA DE ITERADOR CON CORTE
+ * Le suma 'aumento' al contenido del dato correspondiente a la clave.
+ * Devuelve true siempre (Entonces solo debería aplicarse una vez en el iterador).
+*/
+bool con_corte_aumento_y_muestreo(hash_t* hash, const char* clave, void* aumento){
+
+  sin_corte_aumento_y_muestreo(hash, clave, aumento);
+  return true;
+
+}
+
+
+// ============================================== / / ============================================== //
+
+
+
+void DadoHashOFuncionInexistentesOTablaVacia_SiSeIntentaUsarIterador_SeDevuelveCero(){
+
+  int aumento_de_prueba = 1;
+  pa2m_afirmar(hash_con_cada_clave(NULL, sin_corte_aumento_y_muestreo, &aumento_de_prueba) == 0, "No se puede usar iterador con un hash inexistente.");
+
+  hash_t* hash = hash_crear(NULL, 10);
+  pa2m_afirmar(hash_con_cada_clave(hash, NULL, &aumento_de_prueba) == 0, "No se puede usar iterador con una función inexistente.");
+
+  pa2m_afirmar(hash_con_cada_clave(hash, sin_corte_aumento_y_muestreo, &aumento_de_prueba) == 0, "Iterar en una tabla vacía devuelve cero.");  
+  
+  hash_destruir(hash);
+  printf("\n");
+
+} 
+
+
+
+void DadaTablaConDatos_SiSeUsaIteradorSinCorte_SeIteranTodosLosDatos(){
+  
+  hash_t* hash = hash_crear(NULL, 10);
+  int aumento_de_prueba = 1;
+  
+  int uno = 1, dos = 2, tres = 3, cuatro = 4; //Elementos de prueba
+  char* clave_uno = "uno";
+  char* clave_dos = "dos";
+  char* clave_tres = "tres";
+  char* clave_cuatro = "cuatro"; // Claves de prueba
+
+  hash_insertar(hash, clave_uno, &uno);
+  hash_insertar(hash, clave_dos, &dos);
+  hash_insertar(hash, clave_tres, &tres);
+  hash_insertar(hash, clave_cuatro, &cuatro);
+
+  pa2m_afirmar( hash_con_cada_clave(hash, sin_corte_aumento_y_muestreo, &aumento_de_prueba) == 4, "Se iteran todos los datos de una tabla. (iterador sin cortes)");
+  pa2m_afirmar( uno == 2 && dos == 3 && tres == 4 && cuatro == 5 , "La función pasada se aplicó correctamente a todos los datos.");
+
+  hash_destruir(hash);
+  printf("\n");
+
+} 
+
+
+
+void DadaTablaConDatos_SiSeUsaIteradorConCorte_SeIteranSoloLosDatosRequeridos(){
+
+  
+  hash_t* hash = hash_crear(NULL, 10);
+  int aumento_de_prueba = 1;
+  
+  int uno = 1, dos = 2, tres = 3, cuatro = 4; //Elementos de prueba
+  char* clave_uno = "uno";
+  char* clave_dos = "dos";
+  char* clave_tres = "tres";
+  char* clave_cuatro = "cuatro"; // Claves de prueba
+
+  hash_insertar(hash, clave_uno, &uno);
+  hash_insertar(hash, clave_dos, &dos);
+  hash_insertar(hash, clave_tres, &tres);
+  hash_insertar(hash, clave_cuatro, &cuatro);
+
+  pa2m_afirmar( hash_con_cada_clave(hash, con_corte_aumento_y_muestreo, &aumento_de_prueba) == 1, "Se iteran solo los datos necesarios de una tabla. (iterador con corte)");
+  
+  hash_destruir(hash);
+  printf("\n");
+
+} 
+
+
+
 
 
 
@@ -524,13 +633,12 @@ int main(){
     DadaTablaConDatos_SiSeIntentaQuitarDatoQueNoEstaEnTabla_SeDevuelveFallo();
     DadaTablaConDatos_SiSeQuitanDatosQueEstanEnLaTabla_SeQuitanCorrectamente();
     DadaTablaConDatos_SiSeQuitanTodosLosDatos_ResultaTablaVaciaYSePuedenVolverAInsertarTodos();
-/*
-  pa2m_nuevo_grupo("Pruebas de iterador");
-    Dado_Si_X();
-    Dado_Si_X();
-    Dado_Si_X();
-    Dado_Si_X();
 
+  pa2m_nuevo_grupo("Pruebas de iterador");
+    DadoHashOFuncionInexistentesOTablaVacia_SiSeIntentaUsarIterador_SeDevuelveCero();
+    DadaTablaConDatos_SiSeUsaIteradorSinCorte_SeIteranTodosLosDatos();
+    DadaTablaConDatos_SiSeUsaIteradorConCorte_SeIteranSoloLosDatosRequeridos();
+/*
   pa2m_nuevo_grupo("Pruebas de ");
     Dado_Si_X();
     Dado_Si_X();
@@ -538,6 +646,55 @@ int main(){
     Dado_Si_X();
 
 */
+
+
+
+
+
+
+
+
+
+
+
+
+  hash_t* hash = hash_crear(NULL, 3);
+  char* clave_uno = "uno";
+  char* clave_dos = "dos";
+  char* clave_tres = "tres";
+  int uno = 1 , dos = 2 , tres = 3 ; //Datos de prueba.
+
+  
+  hash_insertar(hash, clave_dos, &dos);
+  hash_insertar(hash, clave_uno, &uno);
+  hash_quitar(hash, clave_dos);
+
+
+  hash_insertar(hash, clave_tres, &tres);
+  hash_quitar(hash, clave_tres);
+
+  hash_insertar(hash, clave_uno, &uno);
+
+  pa2m_afirmar( hash_cantidad(hash) == 1 , "prueba extra (colisión caso extremo)");
+
+  hash_destruir(hash);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   return pa2m_mostrar_reporte();
 
