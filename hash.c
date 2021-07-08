@@ -109,7 +109,7 @@ hash_t* hash_crear(hash_destruir_dato_t destruir_elemento, size_t capacidad_inic
 */
 bool factor_de_carga_excedido(size_t almacenados, size_t capacidad){
 
-    float carga_actual = almacenados/capacidad;
+    float carga_actual = (float)almacenados/capacidad;
 
     return (carga_actual >= CARGA_MAXIMA);
 
@@ -126,10 +126,9 @@ int reinsercion_tabla(hash_t copia, hash_t* hash_destino){
     int estado_reinsercion = EXITO;
     while( (i < copia.capacidad) && (estado_reinsercion != FALLO) ){
 
-        if( (copia.tabla[i].esta_ocupada == true) && (copia.tabla[i].dato_fue_eliminado == false) ){
+        if(copia.tabla[i].esta_ocupada == true){
 
             estado_reinsercion = hash_insertar(hash_destino, copia.tabla[i].clave, copia.tabla[i].dato);
-            hash_destino->cantidad_almacenados++;
 
         }
         i++;
@@ -137,6 +136,25 @@ int reinsercion_tabla(hash_t copia, hash_t* hash_destino){
     }
     
     return estado_reinsercion;
+
+}
+
+
+/**
+ * Libera las claves duplicadas que se tenían reservadas en una tabla previa a sufrir un rehasheo.
+ * (Es decir: recibe la tabla ANTIGUA previa al rehash y su correspondiente tamaño, NO recibe la tabla ya rehasheada).
+*/
+void liberar_claves_antiguas(casilla_t* tabla, size_t tamanio){
+
+    for(size_t i = 0; i < tamanio; i++){
+
+        if(tabla[i].esta_ocupada == true){
+
+            free(tabla[i].clave);
+
+        }
+
+    }
 
 }
 
@@ -166,6 +184,7 @@ int rehashear_tabla(hash_t* hash){
         return FALLO;
     }
 
+    liberar_claves_antiguas(copia_hash.tabla, copia_hash.capacidad);
     free(copia_hash.tabla);
     return EXITO;
 
@@ -236,6 +255,9 @@ void encasillar_en_posicion(int posicion, hash_t* hash, char* clave, void* eleme
     
     if(era_clave_repetida){
         free(hash->tabla[posicion].clave); //Debido a que antes se tenía reservado un duplicado adicional (de cuando se insertó por 1ra vez).
+        if((hash->destructor_dato) && (elemento != hash->tabla[posicion].dato)){
+            hash->destructor_dato(hash->tabla[posicion].dato);
+        }
     }
     
     hash->tabla[posicion].clave = clave;
@@ -356,9 +378,32 @@ void desencasillar_en_posicion(int posicion, hash_t* hash){
 }
 
 
+/**
+ * Devuelve true si la cantidad de datos almacenados en la tabla de hash es cero, false en caso contrario.
+*/
+bool tabla_vacia(hash_t* hash){
+    return (hash->cantidad_almacenados == 0);
+}
+
+/**
+ * Asigna false al campo 'dato_fue_eliminado' de todas las casillas de la tabla.
+ * (Uso: Si se borran todos los datos uno por uno viene bien resetearlo para disminuir drásticamente degradación de eficiencia al volver a insertar sobre la misma tabla).
+*/
+void resetear_flags_de_borrado(casilla_t* tabla, size_t tamanio){
+
+    for(size_t i = 0; i < tamanio; i++){
+        tabla->dato_fue_eliminado = false;
+    }
+
+}
+
+
 int hash_quitar(hash_t* hash, const char* clave){
 
     if(!hash || !clave){
+        return FALLO;
+    }
+    else if(tabla_vacia(hash)){
         return FALLO;
     }
 
@@ -372,6 +417,9 @@ int hash_quitar(hash_t* hash, const char* clave){
     }
     
     desencasillar_en_posicion(posicion_a_quitar, hash);
+    if(tabla_vacia(hash)){
+        resetear_flags_de_borrado(hash->tabla, hash->capacidad);
+    }
     return EXITO;
 
 }
@@ -381,6 +429,9 @@ int hash_quitar(hash_t* hash, const char* clave){
 void* hash_obtener(hash_t* hash, const char* clave){
 
     if(!hash || !clave){
+        return NULL;
+    }
+    else if(tabla_vacia(hash)){
         return NULL;
     }
 
@@ -416,6 +467,9 @@ size_t hash_cantidad(hash_t* hash){
 bool hash_contiene(hash_t* hash, const char* clave){
 
     if(!hash || !clave){
+        return false;
+    }
+    else if(tabla_vacia(hash)){
         return false;
     }
 
@@ -462,8 +516,10 @@ void hash_destruir(hash_t* hash){
     if(!hash){
         return;
     }
-    
-    destruir_casilleros(hash->tabla, hash->capacidad, hash->destructor_dato);
+
+    if(tabla_vacia(hash) == false){
+        destruir_casilleros(hash->tabla, hash->capacidad, hash->destructor_dato);
+    }
     free(hash->tabla);
     free(hash);
 
@@ -474,6 +530,9 @@ void hash_destruir(hash_t* hash){
 size_t hash_con_cada_clave(hash_t* hash, bool (*funcion)(hash_t* hash, const char* clave, void* aux), void* aux){
 
     if(!hash || !funcion){
+        return 0;
+    }
+    else if(tabla_vacia(hash)){
         return 0;
     }
 

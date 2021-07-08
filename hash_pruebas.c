@@ -54,10 +54,10 @@ void DadaCapacidadInicialCualquiera_SiSePideCrear_SeObtieneHashNoNull(){
 }
 
 
-// PRUEBAS DE INSERCIÓN / CANTIDAD DE ALMACENADOS / CONTENCIÓN
+// PRUEBAS DE CANTIDAD DE ALMACENADOS / INSERCIÓN / CONTENCIÓN
 
 
-void DadoHashInexistenteOConTablaVacia_SiSePideCantidadDeAlmacenados_SeDevuelveCero(){
+void DadoHashInexistenteOTablaVacia_SiSePideCantidadDeAlmacenados_SeDevuelveCero(){
 
   pa2m_afirmar( hash_cantidad(NULL) == 0 , "Un hash inexistente tiene cero como cantidad de elementos");
 
@@ -275,7 +275,7 @@ void DadoHashConDatosReservadosEnHeap_SiSePasaDestructorDePrueba_SeLiberanTodosL
   hash_insertar(hash, clave_dos, dos);
 
   hash_destruir(hash); //Si pasa de acá con errores de memoria es porque se liberó todo correctamente.
-  pa2m_afirmar( true , "Se destruyó correctamente el hash.")
+  pa2m_afirmar( true , "Se destruyó correctamente el hash.");
 
   printf("\n");
 
@@ -601,15 +601,81 @@ void DadaTablaConDatos_SiSeUsaIteradorConCorte_SeIteranSoloLosDatosRequeridos(){
 
 
 
+// PRUEBAS ADICIONALES
+
+void DadaTablaDeCapacidadMinima_SiSeObligaColisionForzadaYSeBorraCasiTodo_NoSePuedeInsertarClaveRepetida(){
+
+  hash_t* hash = hash_crear(NULL, 3);
+  char* clave_uno = "uno";
+  char* clave_dos = "dos";
+  char* clave_tres = "tres";
+  int uno = 1 , dos = 2 , tres = 3 ; //Datos de prueba.
+
+  
+  hash_insertar(hash, clave_dos, &dos);
+  hash_insertar(hash, clave_uno, &uno);
+  hash_quitar(hash, clave_dos);
+
+
+  hash_insertar(hash, clave_tres, &tres);
+  hash_quitar(hash, clave_tres);
+
+  hash_insertar(hash, clave_uno, &uno);
+
+  pa2m_afirmar( hash_cantidad(hash) == 1 , "Colisionan dos inserciones, se borra un dato, se colisiona otro y se quita, al intentar insertar el repetido que sigue en la tabla NO se puede insertar (caso extremo de uso de flags)."); // (Nuevamente) Leer aclaraciones.
+
+  hash_destruir(hash);
+  printf("\n");
+
+}
+
+
+void DadoUnDestructorNoNullYTablaConDatos_SiSeInsertanClavesRepetidas_LosDatosAntiguosSonCorrectamenteManejadosAlReemplazar(){
+  //
+
+  hash_t* hash = hash_crear(destructor_de_prueba, 10);
+
+  char* clave_uno = "uno";
+  
+  int* uno = malloc(1*sizeof(int)); //Datos alojados de prueba.
+  if(!uno){
+    return;
+  }
+  *uno = 1;
+
+  int* uno_repetido = uno; 
+
+  int* tres = malloc(1*sizeof(int)); 
+  if(!tres){
+    free(uno);
+    free(uno_repetido);
+    return;
+  }
+  *tres = 3;
+
+
+  hash_insertar(hash, clave_uno, uno); //Se inserta dato.
+  hash_insertar(hash, clave_uno, uno_repetido); //Se inserta misma clave CON MISMO DATO. No debería destruir el dato antiguo porque es el mismo de antes.
+  hash_insertar(hash, clave_uno, tres);//Se inserta misma clave CON  DISTINTO DATO. Debería destruir el dato antiguo porque es distinto.
+
+  //Si no hubo errores de memoria en valgrind entonces estuvo todo correcto.
+  pa2m_afirmar( hash_cantidad(hash) == 1 , "El manejo de inserción de claves repetidas (con o sin dato repetido) del hash es el adecuado.");
+
+  hash_destruir(hash); 
+
+}
+
+
+
 
 int main(){
 
-  pa2m_nuevo_grupo("Pruebas de creación (1)");
+  pa2m_nuevo_grupo("Pruebas de creación");
     DadoDestructorNullODestructorNoNull_SiSePideCrear_SeObtieneHashNoNull();
     DadaCapacidadInicialCualquiera_SiSePideCrear_SeObtieneHashNoNull();
 
-  pa2m_nuevo_grupo("Pruebas de inserción, cantidad de almacenados y contención"); // Se usan las tres funciones para probarse entre sí, son muy dependientes la una de la otra.
-    DadoHashInexistenteOConTablaVacia_SiSePideCantidadDeAlmacenados_SeDevuelveCero();
+  pa2m_nuevo_grupo("Pruebas de cantidad de almacenados, inserción y contención"); // Se usan las tres funciones para probarse entre sí, son muy dependientes la una de la otra.
+    DadoHashInexistenteOTablaVacia_SiSePideCantidadDeAlmacenados_SeDevuelveCero();
     DadaTablaConDatos_SiSePideCantidadDeAlmacenados_SeDevuelveCantidadCorrecta();
 
     DadoHashInexistenteOClaveNull_SiSePideInsertar_SeDevuelveFallo();
@@ -638,62 +704,12 @@ int main(){
     DadoHashOFuncionInexistentesOTablaVacia_SiSeIntentaUsarIterador_SeDevuelveCero();
     DadaTablaConDatos_SiSeUsaIteradorSinCorte_SeIteranTodosLosDatos();
     DadaTablaConDatos_SiSeUsaIteradorConCorte_SeIteranSoloLosDatosRequeridos();
-/*
-  pa2m_nuevo_grupo("Pruebas de ");
-    Dado_Si_X();
-    Dado_Si_X();
-    Dado_Si_X();
-    Dado_Si_X();
 
-*/
-
-
-
-
-
-
-
-
-
-
-
-
-  hash_t* hash = hash_crear(NULL, 3);
-  char* clave_uno = "uno";
-  char* clave_dos = "dos";
-  char* clave_tres = "tres";
-  int uno = 1 , dos = 2 , tres = 3 ; //Datos de prueba.
-
-  
-  hash_insertar(hash, clave_dos, &dos);
-  hash_insertar(hash, clave_uno, &uno);
-  hash_quitar(hash, clave_dos);
-
-
-  hash_insertar(hash, clave_tres, &tres);
-  hash_quitar(hash, clave_tres);
-
-  hash_insertar(hash, clave_uno, &uno);
-
-  pa2m_afirmar( hash_cantidad(hash) == 1 , "prueba extra (colisión caso extremo)");
-
-  hash_destruir(hash);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  pa2m_nuevo_grupo("Pruebas varias adicionales"); //Algunas de estas pruebas son un poco más orientadas como caja blanca o tienen características particulares surgidas por experiencias de debuggeo de casos especificos en gdb. Leer aclaración sobre estas pruebas en README.txt, sección Aclaraciones.
+    DadaTablaDeCapacidadMinima_SiSeObligaColisionForzadaYSeBorraCasiTodo_NoSePuedeInsertarClaveRepetida();
+    DadoUnDestructorNoNullYTablaConDatos_SiSeInsertanClavesRepetidas_LosDatosAntiguosSonCorrectamenteManejadosAlReemplazar();
+    
+    //Obligar a que rehashee dos veces
 
 
   return pa2m_mostrar_reporte();
