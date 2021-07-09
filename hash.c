@@ -10,7 +10,7 @@
 
 typedef struct casilla{
     char* clave;
-    void* dato;         // dato == El valor correspondiente a la clave.
+    void* dato;
     bool esta_ocupada;
     bool dato_fue_eliminado;
 }casilla_t;
@@ -23,7 +23,33 @@ struct hash{
 };
 
 
-//valgrind --leak-check=full --track-origins=yes --show-reachable=yes --error-exitcode=2 ./hash_minidemo
+
+
+
+/**
+ * Libera las claves de la tabla y llama al destructor brindado por cada dato de la tabla de hash
+ * (en caso de tenerlo).
+ * (La clave se libera debido a que toda clave insertada fue duplicada antes por prevención).
+*/
+void destruir_casilleros(casilla_t* tabla, size_t tamanio,  hash_destruir_dato_t destructor){
+
+    for(size_t i = 0; i < tamanio; i++){
+
+        if(tabla[i].esta_ocupada == true){
+            
+            if(destructor){
+                destructor(tabla[i].dato);
+            }
+            
+            free(tabla[i].clave);
+
+        }
+
+    }
+
+}
+
+
 
 /**
  * Devuelve un string (reservado en memoria) duplicado del str.
@@ -40,6 +66,7 @@ char* string_duplicar(const char* str){
     return duplicado;
 
 }
+
 
 
 /**
@@ -62,6 +89,7 @@ size_t funcion_de_hash(char* string_clave){
     
 
 }
+
 
 
 hash_t* hash_crear(hash_destruir_dato_t destruir_elemento, size_t capacidad_inicial){
@@ -167,9 +195,9 @@ int rehashear_tabla(hash_t* hash){
 
     hash_t copia_hash = *hash;
 
-    hash->tabla = calloc(3*(hash->capacidad), sizeof(casilla_t));  //Triplico el tamaño de la tabla (EXPLICAR)
+    hash->tabla = calloc(3*(hash->capacidad), sizeof(casilla_t));
     if(!(hash->tabla)){
-        hash->tabla = copia_hash.tabla; //Si falla sale con la misma tabla de antes asi no se pierde la referencia.
+        hash->tabla = copia_hash.tabla;
         return FALLO;
     }
 
@@ -179,8 +207,9 @@ int rehashear_tabla(hash_t* hash){
     int resultado_reinsercion = reinsercion_tabla(copia_hash, hash);
 
     if(resultado_reinsercion == FALLO){
-        free(hash->tabla);       //Se libera la tabla que iba a ser el reemplazo pero falló.
-        hash->tabla = copia_hash.tabla; //Sale con la misma tabla de antes asi no se pierde la referencia.
+        destruir_casilleros(hash->tabla, hash->capacidad, NULL);
+        free(hash->tabla); 
+        hash->tabla = copia_hash.tabla;
         return FALLO;
     }
 
@@ -191,7 +220,7 @@ int rehashear_tabla(hash_t* hash){
 }
 
 /**
- * Se encarga de modificar la posición en la que se quería la clave dada para los casos en los que dicha
+ * Se encarga de modificar la posición en la que se quería insertar la clave dada para los casos en los que dicha
  * posición estaba ocupada en la tabla.
  * Modifica dicha posición dependiendo del caso que se encuentre al recorrer las casillas:
  * 
@@ -387,7 +416,7 @@ bool tabla_vacia(hash_t* hash){
 
 /**
  * Asigna false al campo 'dato_fue_eliminado' de todas las casillas de la tabla.
- * (Uso: Si se borran todos los datos uno por uno viene bien resetearlo para disminuir drásticamente degradación de eficiencia al volver a insertar sobre la misma tabla).
+ * (Uso: Si se borraron TODOS los datos uno por uno viene bien resetearlo para disminuir drásticamente degradación de eficiencia al volver a insertar sobre la misma tabla).
 */
 void resetear_flags_de_borrado(casilla_t* tabla, size_t tamanio){
 
@@ -487,29 +516,6 @@ bool hash_contiene(hash_t* hash, const char* clave){
 
 }
 
-
-/**
- * Libera las claves de la tabla y llama al destructor brindado por el usuario por cada dato de la tabla de hash
- * (en caso de tenerlo).
- * (La clave se libera debido a que toda clave insertada fue duplicada antes por prevención).
-*/
-void destruir_casilleros(casilla_t* tabla, size_t tamanio,  hash_destruir_dato_t destructor){
-
-    for(size_t i = 0; i < tamanio; i++){
-
-        if(tabla[i].esta_ocupada == true){
-            
-            if(destructor){
-                destructor(tabla[i].dato);
-            }
-            
-            free(tabla[i].clave);
-
-        }
-
-    }
-
-}
 
 void hash_destruir(hash_t* hash){
 

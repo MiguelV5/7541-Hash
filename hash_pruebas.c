@@ -661,7 +661,39 @@ void DadoUnDestructorNoNullYTablaConDatos_SiSeInsertanClavesRepetidas_LosDatosAn
   //Si no hubo errores de memoria en valgrind entonces estuvo todo correcto.
   pa2m_afirmar( hash_cantidad(hash) == 1 , "El manejo de inserción de claves repetidas (con o sin dato repetido) del hash es el adecuado.");
 
+  printf("\n");
+
   hash_destruir(hash); 
+
+}
+
+void DadaTabla_SiSeRehasheaMasDeUnaVez_TodosLosElementosSeInsertanCorrectamente(){
+
+  hash_t* hash = hash_crear(NULL, 3);
+   
+
+  char* datos_de_prueba[10] = {"holadato", "holadato2" , "aguantegdb", "pa2m_afirmar" , "123456", "otadaloh" , "2otadaloh" , "aksdjkjad" , "765213" , "wasd"};
+  char* claves_prueba[10] = {"c1", "c2" , "c3" , "c4" , "c5", "c6", "c7", "c8" , "c9" , "c10"};
+
+  hash_insertar(hash, claves_prueba[0], datos_de_prueba[0]);
+  hash_insertar(hash, claves_prueba[1], datos_de_prueba[1]);
+  hash_insertar(hash, claves_prueba[2], datos_de_prueba[2]); //Primer rehash: aumenta capacidad a 9.
+  
+  hash_insertar(hash, claves_prueba[3], datos_de_prueba[3]);
+  hash_insertar(hash, claves_prueba[4], datos_de_prueba[4]);
+  hash_insertar(hash, claves_prueba[5], datos_de_prueba[5]);
+  hash_insertar(hash, claves_prueba[6], datos_de_prueba[6]);
+  
+  pa2m_afirmar(hash_insertar(hash, claves_prueba[7], datos_de_prueba[7]) == EXITO , "Se inserta dato cuando se rehashea por segunda vez."); //Segundo rehash: aumenta capacidad a 27.
+  
+  hash_insertar(hash, claves_prueba[8], datos_de_prueba[8]);
+  hash_insertar(hash, claves_prueba[9], datos_de_prueba[9]);
+  
+  pa2m_afirmar( hash_obtener(hash, claves_prueba[7]) == datos_de_prueba[7] , "El dato insertado tras dicho rehash es el adecuado.");
+  pa2m_afirmar( hash_cantidad(hash) == 10 , "La cantidad de elementos almacenados en el hash es la correcta.");
+
+  hash_destruir(hash);
+  printf("\n");
 
 }
 
@@ -708,6 +740,7 @@ int main(){
   pa2m_nuevo_grupo("Pruebas varias adicionales"); //Algunas de estas pruebas son un poco más orientadas como caja blanca o tienen características particulares surgidas por experiencias de debuggeo de casos especificos en gdb. Leer aclaración sobre estas pruebas en README.txt, sección Aclaraciones.
     DadaTablaDeCapacidadMinima_SiSeObligaColisionForzadaYSeBorraCasiTodo_NoSePuedeInsertarClaveRepetida();
     DadoUnDestructorNoNullYTablaConDatos_SiSeInsertanClavesRepetidas_LosDatosAntiguosSonCorrectamenteManejadosAlReemplazar();
+    DadaTabla_SiSeRehasheaMasDeUnaVez_TodosLosElementosSeInsertanCorrectamente();
     
     //Obligar a que rehashee dos veces
 

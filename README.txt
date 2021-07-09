@@ -57,7 +57,7 @@
             tamaño de la tabla sea mayor o igual a la cantidad de
             claves que hay actualmente dentro de la misma.
             Se suelen tomar diversas convenciones para tratar
-            el caso de capacidad llena y de almaceniamiento
+            el caso de capacidad llena y de almacenamiento
             de colisiones.
             
     En general (para ambos tipos) es necesario establecer un
@@ -91,16 +91,49 @@
 
     Se omite:
         - Explicación de ciertas funciones o partes de las
-        mismas que no la requieren.
+        mismas que no la requieren (o que están explicadas en Aclaraciones).
         - Explicación de verificaciones visibles (de parámetros
         inválidos).
 
     ▒▒▒▒  hash.c  ▒▒▒▒
 
-        ---  ---
-            
+        --- hash_crear ---
+            Para reservar la tabla, al haberla definido como vector
+            dinámico, me convenía usar calloc así todas las casillas
+            tenían en sus booleanos false y sus punteros iniciaizados
+            a NULL.
 
-        ---  ---
+        --- hash_insertar ---
+            Si el factor de carga excede 0.75 (decisión explicada en Aclaraciones),
+            se rehashea la tabla de hash.
+            El rehasheo consiste en:
+            Reemplazo la tabla al hash por una nueva con más almacenamiento y con
+            todos los elementos que se tenían antes, pero vueltos a hashear.
+            En resúmen (rehash):
+                -Uso una copia del hash, principalmente para guardarme la tabla previa
+                (de tal forma que si falla la reserva de memoria para la tabla ampliada,
+                retorna con la misma tabla de antes así no se pierde el puntero antiguo).
+                [Nota adicional: previo a insertar duplico el string clave para evitar
+                posible uso inadecuado de las claves por parte del usuario (por ejemplo, el usuario decide
+                insertar algo que debería tener clave CONSTANTE, sin embargo aún tiene control sobre casteos
+                y puede llegar a modificar una clave que ya esté insertada, perjudicando la indexación) y
+                tener claves completamente independizadas del mismo.]
+                -Triplico la capacidad de la tabla. (Explicado en Aclaraciones).
+                -Se reinsertan todos los datos que estaban en la tabla antigua a la 
+                tabla nueva. Si dicho proceso falla se liberan todas las claves duplicadas que
+                se hayan llegado a reinsertar y se libera la tabla que iba a hacer de reemplazo,
+                por último se recupera la tabla antigua y devuelve una falla.
+                Si anda todo bien, se liberan claves y tabla antiguas y ya se tiene la tabla nueva en
+                el mismo hash.
+            Luego de esto, se separa la inserción en casos:
+                -Si hubo colisión, se busca y guarda la verdadera posición en donde debería insertarse, que
+                es buscada de forma adyacente a partir de la posición inicial devuelta por el uso de la
+                funcion de hash. Luego se guardan los datos en la posición encontrada.
+                -Si se pidió inserción de clave repetida, se guarda la posición de dicha clave y se
+                sobreescriben sus datos.
+                -Si no pasó ninguno de los anteriores, simplemente se acaba de guardar perfectamente.
+
+
             
 
         ---  ---
@@ -136,8 +169,8 @@
             1) La clave de la casilla.
             2) El dato guardado correspondiente a su clave.
             3) Un flag que indica si la casilla tiene actualmente un dato guardado o no.
-            4) Un flag que indica si la casilla tuvo alguna vez algún dato guardado pero se borró.
-        
+            4) Un flag que indica si la casilla tuvo alguna vez algún dato guardado
+            pero se borró.
 
 
     ▒▒▒▒  Factor de carga elegido y criterios tomados  ▒▒▒▒
@@ -157,24 +190,39 @@
             clase para evitar rehashear muy seguido y seguir
             teniendo una cantidad manejable de colisiones.
 
+        Además, tomé como factor de ampliación para rehashear
+        el triple de capacidad de la tabla original.
+        Esto debido a que al triplicar el tamaño de la tabla
+        me aseguro de que, si se llega a tener que rehashear,
+        se pueda llenar de forma asegurada como mínimo
+        el doble de la tabla original sin que se provoque otro rehash.
+        Considero que solo duplicar la tabla genera rehasheos bastante
+        más constantes si la capacidad original es muy pequeña.
+
         Para la inserción en caso de colisión utilizaré
         el "probing lineal", es decir, si una clave colisiona
         la inserto en la siguiente posición adyacente que se 
-        encuentre vacía en la tabla.
+        encuentre vacía en la tabla y que no haya tenido antes
+        algo almacenado.
 
         Para el borrado usaré el campo 'dato_fue_eliminado' de cada
         casilla de la tabla como flag para determinar si
         hubo antes un dato almacenado en dicha posición o no.
-        (Útil para poder destruir toda la tabla
-        y así saber cuándo llamar al destructor y cuando no).
         De esta forma evito tener que reinsertar casillas
         cuando se borran elementos que tenían colisiones 
         subyacentes previas. A pesar de eso cabe aclarar que
-        soy consciente de que se puede llegar a deteriorar un
+        se es consciente de que se puede llegar a deteriorar un
         poco la obtención de casillas cuando se hayan borrado
         muchos elementos, pues va a tardar más en encontrar
-        posiciones vacías, pero a mi parecer es razonable para
-        poder evitar lo anteriormente mencionado.
+        posiciones vacías y que no hayan tenido nada antes almacenado.
+        A mi parecer es razonable para poder evitar lo anteriormente
+        mencionado.
+        Precisamente para evitar el caso hipotético en el que la tabla
+        quede "manchada" en todas sus posiciones con el flag activado,
+        se tiene la función 'resetear_flags_de_borrado', que se llama
+        cuando se quita un último dato de la tabla, es decir cuando
+        tras borrar quede vacía, y así si se quiere seguir usando la 
+        tabla se reestablece su eficiencia de inserción y búsqueda.
 
 
     ▒▒▒▒  Sobre la elección de la función de hash  ▒▒▒▒
@@ -202,7 +250,7 @@
 
         Mientras buscaba entre implementaciones de funciones de hashing 
         conocidas me encontré con una sugerencia de ese estílo y resulta
-        ser un tanto ineficiente (ver:
+        ser un tanto criticada (ver:
             "https://stackoverflow.com/questions/7666509/hash-function-for-string";
             "http://www.cse.yorku.ca/~oz/hash.html", sección: 'lose lose')
         , pero nuevamente no adentraré mucho
@@ -214,6 +262,11 @@
         pero simplemente usando unos más pequeños que 31 (5 inicial y 3 como
         factor, ambos primos), por simple elección arbitraria y para que el
         resultado de hashear no resulte en valores exageradamente grandes a mi parecer.
+
+        (Nota: Cabe destacar que a pesar de lo encontrado acerca del uso de la suma de todos
+        los caracteres del string, no considero que sea una mala función de hash del todo
+        simplemente por leer esas dos críticas, creería que tambien está bien usarla para
+        lo que se quiere actualmente, no traería problema en este contexto).
 
 
     ▒▒▒▒    ▒▒▒▒
