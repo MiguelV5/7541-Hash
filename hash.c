@@ -226,12 +226,8 @@ int rehashear_tabla(hash_t* hash){
  * 
  *  - Si se encuentra con la misma clave en la tabla, devuelve true y asigna en 'posicion' la posición en la cual
  *    se encuentra la clave repetida.
- *    (Esto a propósito de reemplazar el dato correspondiente a la misma. Esto NO es una colisión).
  * 
  *  - Si se encuentra con una casilla vacía, devuelve false y asigna en 'posicion' la posición de la misma.
- *    (Esto pasa cuando NO era una clave repetida, sino cuando hubo una colisión).
- * 
- * (Si la tabla termina, vuelve al inicio de la misma. Por ende se usa el módulo (%) para recorrer).
 */
 bool buscar_verdadera_posicion_de_insercion(int* posicion, casilla_t* tabla, size_t tamanio_tabla, char* clave){
 
@@ -354,7 +350,8 @@ int hash_insertar(hash_t* hash, const char* clave, void* elemento){
  * (es decir, que no se haya borrado algo de ahí) o si se dió toda la vuelta a la tabla y 
  * no se encontró la clave.
  * 
- * (Si la tabla termina, vuelve al inicio de la misma. Por ende se usa el módulo (%) para recorrer).
+ * [Nota: Función puede parecer muy similar a 'buscar_verdadera_posicion_de_insercion',
+ * sin embargo realizan acciones distintas de por medio].
 */
 int posicion_buscar_a_partir_de(int posicion_inicial, casilla_t* tabla, size_t tamanio_tabla, char* clave){
 

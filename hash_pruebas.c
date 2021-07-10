@@ -16,7 +16,7 @@ void destructor_de_prueba(void* dato){
 }
 
 
-// PRUEBAS DE CREACIÓN (1)
+// PRUEBAS DE CREACIÓN 
 
 void DadoDestructorNullODestructorNoNull_SiSePideCrear_SeObtieneHashNoNull(){
 
@@ -56,6 +56,7 @@ void DadaCapacidadInicialCualquiera_SiSePideCrear_SeObtieneHashNoNull(){
 
 // PRUEBAS DE CANTIDAD DE ALMACENADOS / INSERCIÓN / CONTENCIÓN
 
+// (Tendiendo a cantidad):
 
 void DadoHashInexistenteOTablaVacia_SiSePideCantidadDeAlmacenados_SeDevuelveCero(){
 
@@ -93,7 +94,7 @@ void DadaTablaConDatos_SiSePideCantidadDeAlmacenados_SeDevuelveCantidadCorrecta(
 }
 
 
-//
+// (Tendiendo a Inserción):
 
 
 void DadoHashInexistenteOClaveNull_SiSePideInsertar_SeDevuelveFallo(){
@@ -136,7 +137,7 @@ void DadaTablaVaciaDeGranCapacidad_SiSeInsertanVariosDatos_SeInsertanCorrectamen
   pa2m_afirmar( hash_contiene(hash, clave_cuatro) == true , "El dato insertado está contenido en la tabla.");
   pa2m_afirmar( hash_cantidad(hash) == 4 , "La cantidad de datos almacenados es 4.");
 
-  pa2m_afirmar( hash_insertar(hash, clave_cuatro, &uno) == EXITO , "Se insertó una clave repetida en la tabla (solo debería reemplazarse el dato).");
+  pa2m_afirmar( hash_insertar(hash, clave_cuatro, &uno) == EXITO , "Se intenta insertar una clave repetida en la tabla.");
   pa2m_afirmar( hash_contiene(hash, clave_cuatro) == true , "El dato correspondiente a la misma clave sigue contenido en la tabla.");
   pa2m_afirmar( hash_cantidad(hash) == 4 , "La cantidad de datos almacenados sigue siendo 4.");
 
@@ -173,7 +174,7 @@ void DadaTablaPropensaARehashear_SiSeInsertaDato_SeInsertaCorrectamenteTrasRehas
 }
 
 
-//
+// (Tendiendo a contención):
 
 void DadoHashInexistenteOClaveNullOTablaVacia_SiSePideVerificarContencion_SeDevuelveFalse(){
 
@@ -274,7 +275,7 @@ void DadoHashConDatosReservadosEnHeap_SiSePasaDestructorDePrueba_SeLiberanTodosL
   hash_insertar(hash, clave_uno, uno);
   hash_insertar(hash, clave_dos, dos);
 
-  hash_destruir(hash); //Si pasa de acá con errores de memoria es porque se liberó todo correctamente.
+  hash_destruir(hash); //Si pasa de acá sin errores de memoria es porque se liberó todo correctamente.
   pa2m_afirmar( true , "Se destruyó correctamente el hash.");
 
   printf("\n");
@@ -656,7 +657,7 @@ void DadoUnDestructorNoNullYTablaConDatos_SiSeInsertanClavesRepetidas_LosDatosAn
 
   hash_insertar(hash, clave_uno, uno); //Se inserta dato.
   hash_insertar(hash, clave_uno, uno_repetido); //Se inserta misma clave CON MISMO DATO. No debería destruir el dato antiguo porque es el mismo de antes.
-  hash_insertar(hash, clave_uno, tres);//Se inserta misma clave CON  DISTINTO DATO. Debería destruir el dato antiguo porque es distinto.
+  hash_insertar(hash, clave_uno, tres);//Se inserta misma clave CON  DISTINTO DATO. Debería destruir el dato antiguo porque es distinto al nuevo.
 
   //Si no hubo errores de memoria en valgrind entonces estuvo todo correcto.
   pa2m_afirmar( hash_cantidad(hash) == 1 , "El manejo de inserción de claves repetidas (con o sin dato repetido) del hash es el adecuado.");
@@ -706,7 +707,7 @@ int main(){
     DadoDestructorNullODestructorNoNull_SiSePideCrear_SeObtieneHashNoNull();
     DadaCapacidadInicialCualquiera_SiSePideCrear_SeObtieneHashNoNull();
 
-  pa2m_nuevo_grupo("Pruebas de cantidad de almacenados, inserción y contención"); // Se usan las tres funciones para probarse entre sí, son muy dependientes la una de la otra.
+  pa2m_nuevo_grupo("Pruebas de cantidad de almacenados, inserción y contención"); // Se usan las tres funciones para probarse entre sí, son muy dependientes la una de la otra. Ver Aclaraciones.
     DadoHashInexistenteOTablaVacia_SiSePideCantidadDeAlmacenados_SeDevuelveCero();
     DadaTablaConDatos_SiSePideCantidadDeAlmacenados_SeDevuelveCantidadCorrecta();
 
@@ -737,13 +738,10 @@ int main(){
     DadaTablaConDatos_SiSeUsaIteradorSinCorte_SeIteranTodosLosDatos();
     DadaTablaConDatos_SiSeUsaIteradorConCorte_SeIteranSoloLosDatosRequeridos();
 
-  pa2m_nuevo_grupo("Pruebas varias adicionales"); //Algunas de estas pruebas son un poco más orientadas como caja blanca o tienen características particulares surgidas por experiencias de debuggeo de casos especificos en gdb. Leer aclaración sobre estas pruebas en README.txt, sección Aclaraciones.
+  pa2m_nuevo_grupo("Pruebas varias adicionales"); // Leer aclaración sobre estas pruebas en README.txt, sección Aclaraciones.
     DadaTablaDeCapacidadMinima_SiSeObligaColisionForzadaYSeBorraCasiTodo_NoSePuedeInsertarClaveRepetida();
     DadoUnDestructorNoNullYTablaConDatos_SiSeInsertanClavesRepetidas_LosDatosAntiguosSonCorrectamenteManejadosAlReemplazar();
     DadaTabla_SiSeRehasheaMasDeUnaVez_TodosLosElementosSeInsertanCorrectamente();
-    
-    //Obligar a que rehashee dos veces
-
 
   return pa2m_mostrar_reporte();
 

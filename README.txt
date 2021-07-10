@@ -91,7 +91,8 @@
 
     Se omite:
         - Explicación de ciertas funciones o partes de las
-        mismas que no la requieren (o que están explicadas en Aclaraciones).
+        mismas que no la requieren (son intuitivas al leerlas
+        o están explicadas en Aclaraciones).
         - Explicación de verificaciones visibles (de parámetros
         inválidos).
 
@@ -103,6 +104,23 @@
             tenían en sus booleanos false y sus punteros iniciaizados
             a NULL.
 
+        --- BUSQUEDAS EN GENERAL ---
+            En general realizo las busquedas de posiciones por medio de un recorrido modulado (%),
+            simplemente por comodidad de cómo funciona el modulo usado para iterar sobre la tabla cuando
+            se quiere, por ejemplo, recorrer desde la mitad de la tabla hasta el final y luego volver al
+            inicio para continuar.
+            Ejemplo: tabla[i%tamanio] : siendo 'i' un contador y 'tamanio' el tamaño de la tabla.
+              i == 0   -->  i%tamanio == 0;
+              i == 1   -->  i%tamanio == 1;
+                    (.)
+                    (.)   i%tamanio == i  para todo  i < tamanio
+                    (.)
+              i == tamanio      --> i%tamanio == 0;
+              i == tamanio + 1  --> i%tamanio == 1;
+                    (.)
+                    (.)
+                    (.)
+
         --- hash_insertar ---
             Si el factor de carga excede 0.75 (decisión explicada en Aclaraciones),
             se rehashea la tabla de hash.
@@ -113,45 +131,49 @@
                 -Uso una copia del hash, principalmente para guardarme la tabla previa
                 (de tal forma que si falla la reserva de memoria para la tabla ampliada,
                 retorna con la misma tabla de antes así no se pierde el puntero antiguo).
+
                 [Nota adicional: previo a insertar duplico el string clave para evitar
-                posible uso inadecuado de las claves por parte del usuario (por ejemplo, el usuario decide
+                posible uso inadecuado de las claves por parte del usuario  y
+                tener claves completamente independizadas del mismo (Por ejemplo, el usuario decide
                 insertar algo que debería tener clave CONSTANTE, sin embargo aún tiene control sobre casteos
-                y puede llegar a modificar una clave que ya esté insertada, perjudicando la indexación) y
-                tener claves completamente independizadas del mismo.]
+                y puede llegar a modificar una clave que ya esté insertada, perjudicando la indexación)].
+
                 -Triplico la capacidad de la tabla. (Explicado en Aclaraciones).
                 -Se reinsertan todos los datos que estaban en la tabla antigua a la 
                 tabla nueva. Si dicho proceso falla se liberan todas las claves duplicadas que
                 se hayan llegado a reinsertar y se libera la tabla que iba a hacer de reemplazo,
                 por último se recupera la tabla antigua y devuelve una falla.
-                Si anda todo bien, se liberan claves y tabla antiguas y ya se tiene la tabla nueva en
+                Si anda todo bien, se liberan claves y tabla ANTIGUAS y ya se tiene la tabla nueva en
                 el mismo hash.
+
             Luego de esto, se separa la inserción en casos:
                 -Si hubo colisión, se busca y guarda la verdadera posición en donde debería insertarse, que
                 es buscada de forma adyacente a partir de la posición inicial devuelta por el uso de la
-                funcion de hash. Luego se guardan los datos en la posición encontrada.
-                -Si se pidió inserción de clave repetida, se guarda la posición de dicha clave y se
-                sobreescriben sus datos.
-                -Si no pasó ninguno de los anteriores, simplemente se acaba de guardar perfectamente.
-
-
+                funcion de hash, y debería ser una posición en la que no haya habido ni haya actualemente
+                algo almacenado. Luego se guardan los datos en la posición encontrada (acción correspondiente
+                a lineas 260 - 269 de hash.c, explicadas en Aclaraciones).
+                -Si se pidió inserción de clave repetida, al encontrar dicha clave se
+                sobreescriben sus datos y se usa el destructor sobre el dato ANTIGUO (en caso de tenerlo).
+                -Si no pasó ninguno de los anteriores, simplemente se 'encasillan' los datos en la 
+                posición obtenida en un principio.
             
 
-        ---  ---
+        --- hash_quitar; hash_contiene; hash_obtener ---
+            Las tres funciones tienen comportamiento idéntico en cuanto a busqueda, se usa la función
+            'posicion_buscar_a_partir_de', que actúa de forma similar (pero no igual) a
+            'buscar_verdadera_posicion_de_insercion'. La diferencia principal es que esta última 
+            devuelve información adicional sobre el repetimiento de una clave a insertar, mientras que la
+            primera devuelve solo la posición de lo que se busca (si es que existe).
             
+            Para quitar:
+                Se busca clave, si se encuentra se 'desencasilla'.
+                Si tras quitar la tabla queda vacía, se resetean los flags de borrado para
+                restaurar calidad de eficiencia en las inserciones, como si se tuviera una tabla nueva.
+            
+            Para obtener y para contención:
+                Se busca clave, si se encuentra se devuelve su dato adjunto (para hash_obtener) o
+                se devuelve true (para hash_contiene).
 
-        ---  ---
-            
-            
-
-        ---  ---
-            
-        
-        ---  ---
-            
-
-        ---  ---
-            
-        
 
 ▒▒▒▒▒▒▒▒▒▒▒▒  Aclaraciones:  ▒▒▒▒▒▒▒▒▒▒▒▒ 
 
@@ -269,16 +291,72 @@
         lo que se quiere actualmente, no traería problema en este contexto).
 
 
-    ▒▒▒▒    ▒▒▒▒
+    ▒▒▒▒  Sobre la función 'buscar_verdadera_posicion_de_insercion'  ▒▒▒▒
 
-        
+        Debido al uso de flags de borrado, el recorrido DEBE tener en cuenta al mismo para seguir
+        buscando para ver si se trata de una clave repetida.
+        Las lineas 260 a la 269 hacen todas parte del mismo caso (colisión, en cuyo caso la clave
+        no es repetida pero tuvo como posición inicial una que ya estaba ocupada).
+
+        Linea 260:
+        El primer if trata el caso en el que se salió del while tras toparse una casilla de la tabla
+        que estaba vacía y además núnca antes había tenido algo almacenado dentro.
+        En tal caso simplemente esa es la nueva posición de inserción, ya que esta completamente
+        disponible.
+
+        Linea 263:
+        Ahora, en el else if se evalua el peor caso posible, en el que se dió vuelta a toda la tabla,
+        era una colisión y no se encontró una posicion completamente disponible (Es decir, se volvió a la
+        posición inicial y la misma estaba ocupada, posiblemente porque se tenían ciertas casillas ocupadas y
+        el resto con flags activados, por ejemplo).
+        En tal caso se busca nuevamente a partir de la posición inicial, pero esta vez sin considerar 
+        el flag de borrado, ya que alcanza con obtener una posición que no esté ocupada (pues ya se aseguró
+        que la clave no era repetida).
 
 
-    ▒▒▒▒    ▒▒▒▒
+    ▒▒▒▒  Sobre pruebas conjuntas de cantidad de almacenados, inserción y contención  ▒▒▒▒
 
-        
-                                               
+       En general para poder probar casos diversos de las 3 funciones era necesario contar con 
+       el correcto funcionamiento de una para poder probar un caso de la otra, y viceversa
+       (si bien 'hash_obtener' también cumple, decidí probarla aparte por su 
+       comportamiento similar pero más completo que 'hash_contiene', en el sentido de que devuelve
+       un dato buscado y no solo saber si existe en la tabla o no).
 
-    ▒▒▒▒    ▒▒▒▒
+       Con esto dicho es claro que las 3 funciones eran muy dependientes entre sí para ser probadas,
+       con lo cual realicé las pruebas para las 3 funciones a la vez, de tal forma que se pudieran 
+       implementar y probar todas al mismo tiempo.
 
-       
+       Recién despues de asegurar un comportamiento esperado general de las tres se abrían más 
+       posibilidades de pruebas para otros casos especificos, como por ejemplo la destrucción
+       correcta de una tabla con destructor.
+
+
+    ▒▒▒▒  Sobre pruebas varias adicionales  ▒▒▒▒
+
+        Algunas de estas pruebas son un poco más orientadas como caja blanca o tienen características
+        particulares surgidas por experiencias de debuggeo de casos especificos en gdb.
+
+        La primera prueba da cuenta de un caso extremo en el que absolutamente todo colisione al insertar.
+        Para llevarla a cabo obligatoriamente se tiene que conocer la función de hash aplicada, por tanto
+        es una prueba de caja blanca, pero la considero necesaria para el correcto funcionamiento en caso
+        de presentarse. Lo que hice fue cambiar temporalmente la función de hash mencionada antes, y hacer
+        que devolviera: 
+            -Un valor constante cualquiera, mayor que cero.
+            -Cero siempre.
+        Con ambos casos de prueba logré encontrar dos fallas distintas que hubieran podido pasar desapercibidas
+        de no probar con tal modificación.
+        La prueba evalúa que, con una función de hash que siempre devuelve cero, tras las inserciones y los
+        borrados resulta una tabla así:  [ -*  ,  "uno": 1  ,  -*]
+        Con '-' que representa espacio no ocupado, '*' el flag de borrado activado y 1 el único elemento que
+        queda correspondiente a la clave "uno".
+        Esta prueba hizo que encontrara el tener que considerar al flag de borrado a la hora de buscar si 
+        la clave era repetida al insertar. (Cuando no lo consideraba se insertaba la clave "uno" dos veces).
+
+        La segunda prueba se aplicó al estar analizando el minidemo, ya que se perdía la memoria de los
+        datos almacenados cuando se insertaron repetidos. De ahí concluí que se debían destruir los 
+        elementos antiguos cuando se hacía el reemplazo en la tabla (en el caso en el que se tuviera
+        destructor no NULL, claro está).
+
+        Para la tercera prueba era necesario conocer el factor de ampliación de la tabla cuando se rehasheaba,
+        para así asegurar que se diera un segundo rehasheo. Esta prueba pudo hacerse antes junto con las
+        primeras pruebas de inserción, pero en ese momento no se me ocurrió.
